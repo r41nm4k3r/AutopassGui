@@ -50,3 +50,30 @@ jobs:
         with:
           name: linux-deb
           path: dist/*.deb
+
+  build-appimage:
+    runs-on: ubuntu-latest
+    container:
+      image: rockylinux:9
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install system dependencies
+        run: |
+          dnf install -y python3.11 python3.11-pip git
+          dnf install -y cairo-gobject-devel gobject-introspection-devel gtk3-devel
+          dnf install -y libcanberra-gtk3 PackageKit-gtk3-module gvfs-client
+          dnf install -y fuse fuse-libs
+      - name: Install Briefcase
+        run: |
+          python3.11 -m pip install --upgrade pip
+          python3.11 -m pip install briefcase
+      - name: Build AppImage
+        run: |
+          python3.11 -m briefcase create linux appimage
+          python3.11 -m briefcase build linux appimage
+          python3.11 -m briefcase package linux appimage
+      - name: Upload AppImage artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: linux-appimage
+          path: dist/*.AppImage

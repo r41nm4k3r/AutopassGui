@@ -27,14 +27,15 @@ Once the build completes:
 2. Scroll down to **"Artifacts"** section
 3. Download:
    - **windows-installer** - Contains the `.msi` file for Windows
-   - **linux-deb** - Contains the `.deb` file for Linux
+   - **linux-deb** - Contains the `.deb` file for Debian/Ubuntu
+   - **linux-appimage** - Contains the `.AppImage` file for universal Linux
 
 ## Important Notes
 
 - The workflow runs automatically on every push to the `main` branch
 - Windows builds will create `.msi` installer files
-- Linux builds will create `.deb` package files
-- Both will be available as downloadable artifacts for 90 days
+- Linux builds will create `.deb` package files (Debian/Ubuntu) and `.AppImage` files (universal Linux)
+- All artifacts will be available for download for 90 days
 
 ## Triggering Manual Builds
 

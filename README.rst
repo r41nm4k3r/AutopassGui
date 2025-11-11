@@ -19,6 +19,11 @@ Installation
 
     sudo dpkg -i autopassgui_1.0.0-1~debian-trixie_amd64.deb
 
+**Linux (Universal - AppImage)**::
+
+    chmod +x Autopass_GUI-1.0.0-x86_64.AppImage
+    ./Autopass_GUI-1.0.0-x86_64.AppImage
+
 **Windows**::
 
     Run the .msi installer
