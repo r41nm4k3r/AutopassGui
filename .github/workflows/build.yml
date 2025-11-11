@@ -10,9 +10,9 @@ jobs:
   build-windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       - name: Install dependencies
@@ -24,7 +24,7 @@ jobs:
           briefcase build windows
           briefcase package windows
       - name: Upload Windows artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: windows-installer
           path: dist/*.msi
@@ -32,9 +32,9 @@ jobs:
   build-linux:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       - name: Install dependencies
@@ -46,7 +46,7 @@ jobs:
         run: |
           briefcase package linux system
       - name: Upload Linux artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: linux-deb
           path: dist/*.deb
@@ -56,7 +56,7 @@ jobs:
     container:
       image: rockylinux:9
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install system dependencies
         run: |
           dnf install -y python3.11 python3.11-pip git
@@ -73,7 +73,7 @@ jobs:
           python3.11 -m briefcase build linux appimage
           python3.11 -m briefcase package linux appimage
       - name: Upload AppImage artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: linux-appimage
           path: dist/*.AppImage
