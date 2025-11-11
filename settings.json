@@ -1,0 +1,9 @@
+{
+  "labels": {
+    "password1": "Send Password 1",
+    "password2": "Send Password 2",
+    "password3": "Send Password 3",
+    "password4": "Send Password 4"
+  },
+  "theme": "dark"
+}
