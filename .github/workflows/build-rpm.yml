@@ -1,0 +1,76 @@
+name: Build RPM
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-rpm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            pkg-config \
+            python3-dev \
+            python3-venv \
+            libcairo2-dev \
+            libgirepository1.0-dev \
+            gir1.2-gtk-3.0 \
+            libgirepository-1.0-1 \
+            libcanberra-gtk3-module \
+            git \
+            rpm \
+            rpm2cpio \
+            cpio
+          # Make system python3 point to the same version we're using
+          PYTHON_PATH=$(which python)
+          sudo update-alternatives --install /usr/bin/python3 python3 $PYTHON_PATH 1
+          # Ensure Python.h is available for the version we're using
+          PYTHON_INCLUDE=$(python -c "import sysconfig; print(sysconfig.get_path('include'))")
+          echo "Python include path: $PYTHON_INCLUDE"
+          # Create symlinks for python3.11-config since Briefcase expects it
+          sudo ln -sf $(which python)-config /usr/bin/python3.11-config || true
+          # Also create library symlinks if needed
+          PYTHON_LIB=$(python -c "import sysconfig; print(sysconfig.get_config_var('LIBDIR'))")
+          echo "Python library path: $PYTHON_LIB"
+          if [ -d "$PYTHON_LIB" ]; then
+            sudo ln -sf "$PYTHON_LIB"/libpython3.11* /usr/lib/ 2>/dev/null || true
+          fi
+      - name: Install Briefcase
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install briefcase
+      - name: Clean previous builds
+        run: |
+          sudo rm -rf build dist linux || true
+      - name: Create app
+        run: |
+          briefcase create linux system rhel --no-input --log -v
+      - name: Build app
+        run: |
+          briefcase build linux system rhel --no-input --log -v
+      - name: Package app
+        run: |
+          briefcase package linux system rhel --adhoc-sign --update --no-input --log -v
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: autopassgui-rpm
+          path: dist
+          if-no-files-found: warn
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-autopassgui-rpm
+          path: logs
