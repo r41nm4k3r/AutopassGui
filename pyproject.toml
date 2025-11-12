@@ -28,9 +28,7 @@ test_sources = [
 ]
 
 requires = [
-    "pyserial",
-    # Global PyGObject pin for AppImage compatibility
-    "pygobject==3.40.1; platform_system=='Linux'",
+    "pyserial"
 ]
 
 test_requires = [
@@ -151,16 +149,16 @@ system_runtime_requires = [
 manylinux = "manylinux_2_28"
 
 requires = [
-    # Force much older PyGObject that works with gobject-introspection 1.56.1
-    "pygobject==3.40.1",
     "toga-gtk~=0.5.0",
+    # Use same constraint as Linux system build - compatible with older gobject-introspection
+    "pygobject>=3.40.0,<3.52.1",
 ]
 
 system_requires = [
     # Needed to compile pycairo wheel
     "cairo-gobject-devel",
-    # Needed to compile PyGObject wheel
-    "gobject-introspection-devel",
+    # Try without gobject-introspection-devel to avoid version conflicts
+    # "gobject-introspection-devel",
     # Needed to provide GTK
     "gtk3-devel",
     # Dependencies that GTK looks for at runtime, that need to be
