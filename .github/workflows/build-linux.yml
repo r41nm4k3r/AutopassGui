@@ -86,12 +86,12 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: linux-system
+          name: autopassgui-debian
           path: dist
           if-no-files-found: warn
       - name: Upload logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: logs-linux
+          name: logs-autopassgui-debian
           path: logs
