@@ -152,8 +152,6 @@ manylinux = "manylinux_2_34"
 
 requires = [
     "toga-gtk~=0.5.0",
-    # Use exact version that works with gobject-introspection 1.56.1
-    "pygobject==3.36.1",
 ]
 
 system_requires = [

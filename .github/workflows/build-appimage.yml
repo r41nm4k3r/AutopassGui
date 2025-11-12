@@ -28,16 +28,15 @@ jobs:
             gir1.2-gtk-3.0 \
             libgirepository-1.0-1 \
             libcanberra-gtk3-module \
+            libgtk-3-dev \
+            libffi-dev \
+            meson \
+            ninja-build \
+            patchelf \
+            desktop-file-utils \
             fuse \
             libfuse2 \
             git
-          # Remove conflicting packages and install Docker
-          sudo apt-get remove -y containerd containerd.io runc || true
-          sudo apt-get autoremove -y || true
-          curl -fsSL https://get.docker.com -o get-docker.sh
-          sudo sh get-docker.sh
-          sudo systemctl start docker
-          sudo usermod -aG docker $USER
           # Make system python3 point to the same version we're using
           PYTHON_PATH=$(which python)
           sudo update-alternatives --install /usr/bin/python3 python3 $PYTHON_PATH 1
@@ -54,12 +53,18 @@ jobs:
           PIP_ONLY_BINARY: "pygobject"
           # Set build environment variables
           PKG_CONFIG_PATH: "/usr/lib64/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig"
+          # Build without Docker to use Ubuntu's modern gobject-introspection
+          BRIEFCASE_NO_DOCKER: "1"
         run: |
           briefcase create linux appimage --no-input --log -v
       - name: Build app
+        env:
+          BRIEFCASE_NO_DOCKER: "1"
         run: |
           briefcase build linux appimage --no-input --log -v
       - name: Package app
+        env:
+          BRIEFCASE_NO_DOCKER: "1"
         run: |
           briefcase package linux appimage --adhoc-sign --update --no-input --log -v
       - name: Upload artifact
