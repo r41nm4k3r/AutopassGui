@@ -60,42 +60,34 @@ jobs:
 
   build-appimage:
     runs-on: ubuntu-latest
-    container:
-      image: rockylinux:9
     steps:
       - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
       - name: Install system dependencies
         run: |
-          dnf -y install \
-            python3.11 \
-            python3.11-pip \
-            python3.11-devel \
-            git \
-            gcc \
-            make \
-            pkgconf-pkg-config \
-            patchelf \
-            desktop-file-utils \
-            file \
-            zsync \
-            cairo-gobject-devel \
-            gobject-introspection \
-            gobject-introspection-devel \
-            gtk3-devel \
-            libcanberra-gtk3 \
-            PackageKit-gtk3-module \
-            gvfs-client \
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            pkg-config \
+            python3-dev \
+            libcairo2-dev \
+            libgirepository1.0-dev \
+            gir1.2-gtk-3.0 \
+            libgirepository-1.0-1 \
+            libcanberra-gtk3-module \
             fuse \
-            fuse-libs
+            libfuse2
       - name: Install Briefcase
         run: |
-          python3.11 -m pip install --upgrade pip
-          python3.11 -m pip install briefcase
+          pip install briefcase
       - name: Build AppImage
         run: |
-          python3.11 -m briefcase create linux appimage
-          python3.11 -m briefcase build linux appimage
-          python3.11 -m briefcase package linux appimage
+          briefcase create linux appimage
+          briefcase build linux appimage
+          briefcase package linux appimage
       - name: Upload AppImage artifact
         uses: actions/upload-artifact@v4
         with:
