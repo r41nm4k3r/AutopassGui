@@ -44,6 +44,7 @@ jobs:
             build-essential \
             pkg-config \
             python3-dev \
+            python3.11-venv \
             libcairo2-dev \
             libgirepository1.0-dev
           pip install briefcase
@@ -73,13 +74,15 @@ jobs:
             build-essential \
             pkg-config \
             python3-dev \
+            python3.11-venv \
             libcairo2-dev \
             libgirepository1.0-dev \
             gir1.2-gtk-3.0 \
             libgirepository-1.0-1 \
             libcanberra-gtk3-module \
             fuse \
-            libfuse2
+            libfuse2 \
+            git
       - name: Install Briefcase
         run: |
           pip install briefcase
