@@ -66,7 +66,9 @@ jobs:
           sudo rm -rf build dist linux || true
       - name: Install RPM tools
         run: |
-          # Install tools needed for RPM conversion
+          # Install tools needed for RPM conversion and ensure apt works properly
+          sudo apt-get install --reinstall python3-apt -y || true
+          sudo apt-get update || echo "apt-get update failed, continuing anyway"
           sudo apt-get install -y \
             rpm \
             rpm2cpio \
@@ -85,12 +87,19 @@ jobs:
       - name: Convert DEB to RPM
         run: |
           # Convert the working DEB package to RPM using alien
+          echo "Looking for DEB packages in dist directory..."
+          ls -la dist/
+          
           if [ -f dist/*.deb ]; then
-            sudo alien -r dist/*.deb
-            mv *.rpm dist/ 2>/dev/null || echo "RPM conversion completed"
+            echo "Found DEB package, converting to RPM..."
+            sudo alien -r -k dist/*.deb
+            echo "Moving RPM to dist directory..."
+            mv *.rpm dist/ 2>/dev/null || echo "RPM files moved to dist"
+            echo "Final contents of dist directory:"
             ls -la dist/
           else
             echo "No DEB package found to convert"
+            exit 1
           fi
       - name: Upload artifact
         uses: actions/upload-artifact@v4
