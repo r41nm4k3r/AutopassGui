@@ -7,73 +7,33 @@ on:
     branches: [ main ]
 
 jobs:
-  build-windows:
-    runs-on: windows-latest
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.runs_on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: "Windows"
+            runs_on: "windows-latest"
+            platform: "windows"
+            output_format: "app"
+          - target: "Ubuntu"
+            runs_on: "ubuntu-latest"
+            platform: "linux"
+            output_format: "system"
+          - target: "AppImage"
+            runs_on: "ubuntu-latest"
+            platform: "linux"
+            output_format: "appimage"
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install dependencies
-        run: |
-          pip install briefcase
-      - name: Build Windows package
-        run: |
-          briefcase create windows
-          briefcase build windows
-          briefcase package windows
-      - name: Upload Windows artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-installer
-          path: dist/*.msi
-
-  build-linux:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            pkg-config \
-            python3-dev \
-            python3.11-venv \
-            libcairo2-dev \
-            libgirepository1.0-dev
-          pip install briefcase
-      - name: Build Linux package
-        run: |
-          briefcase create linux system --no-input --log
-          briefcase build linux system --no-input --log
-          briefcase package linux system --no-input --log
-      - name: Upload Linux artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: linux-deb
-          path: dist/*.deb
-
-  build-appimage:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - name: Install Docker
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y docker.io
-          sudo systemctl start docker
-          sudo usermod -aG docker $USER
-      - name: Install system dependencies
+      - name: Install system dependencies (Ubuntu)
+        if: matrix.runs_on == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -88,17 +48,32 @@ jobs:
             libcanberra-gtk3-module \
             fuse \
             libfuse2 \
-            git
+            git \
+            docker.io
+          sudo systemctl start docker
+          sudo usermod -aG docker $USER
       - name: Install Briefcase
         run: |
-          pip install briefcase
-      - name: Build AppImage
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install briefcase
+      - name: Create app
         run: |
-          briefcase create linux appimage --no-input --log
-          briefcase build linux appimage --no-input --log
-          briefcase package linux appimage --no-input --log
-      - name: Upload AppImage artifact
+          briefcase create ${{ matrix.platform }} ${{ matrix.output_format }} --no-input --log
+      - name: Build app
+        run: |
+          briefcase build ${{ matrix.platform }} ${{ matrix.output_format }} --no-input --log
+      - name: Package app
+        run: |
+          briefcase package ${{ matrix.platform }} ${{ matrix.output_format }} --adhoc-sign --update --no-input --log
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: linux-appimage
-          path: dist/*.AppImage
+          name: ${{ matrix.target }}-${{ matrix.output_format }}
+          path: dist
+          if-no-files-found: error
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-${{ matrix.target }}
+          path: logs
