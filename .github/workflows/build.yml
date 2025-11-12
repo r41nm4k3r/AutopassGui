@@ -58,19 +58,24 @@ jobs:
           python -m pip install briefcase
       - name: Create app
         run: |
-          briefcase create ${{ matrix.platform }} ${{ matrix.output_format }} --no-input --log
+          briefcase create ${{ matrix.platform }} ${{ matrix.output_format }} --no-input --log -v
       - name: Build app
         run: |
-          briefcase build ${{ matrix.platform }} ${{ matrix.output_format }} --no-input --log
+          briefcase build ${{ matrix.platform }} ${{ matrix.output_format }} --no-input --log -v
       - name: Package app
         run: |
-          briefcase package ${{ matrix.platform }} ${{ matrix.output_format }} --adhoc-sign --update --no-input --log
+          briefcase package ${{ matrix.platform }} ${{ matrix.output_format }} --adhoc-sign --update --no-input --log -v
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.target }}-${{ matrix.output_format }}
           path: dist
           if-no-files-found: error
+      - name: Collect logs
+        if: always()
+        run: |
+          mkdir -p logs
+          find . -name "*.log" -exec cp {} logs/ \; || true
       - name: Upload logs on failure
         if: failure()
         uses: actions/upload-artifact@v4
