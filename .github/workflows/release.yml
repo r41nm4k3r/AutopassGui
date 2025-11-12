@@ -1,0 +1,123 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-all:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # Install Briefcase
+      - name: Install Briefcase
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install briefcase
+
+      # Build Linux DEB
+      - name: Build Linux DEB
+        run: |
+          briefcase create linux system --no-input
+          briefcase build linux system --no-input
+          briefcase package linux system --adhoc-sign --update --no-input
+
+      # Build Linux AppImage
+      - name: Build Linux AppImage
+        run: |
+          briefcase create linux appimage --no-input
+          briefcase build linux appimage --no-input
+          briefcase package linux appimage --adhoc-sign --update --no-input
+
+      # Convert DEB to RPM
+      - name: Convert DEB to RPM
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y alien
+          if [ -f dist/*.deb ]; then
+            sudo alien -r -k dist/*.deb
+            mv *.rpm dist/ 2>/dev/null || true
+          fi
+
+      # Upload all Linux artifacts
+      - name: Upload Linux packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-packages
+          path: dist/
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Briefcase
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install briefcase
+
+      - name: Build Windows MSI
+        run: |
+          briefcase create windows app --no-input
+          briefcase build windows app --no-input
+          briefcase package windows app --adhoc-sign --update --no-input
+
+      - name: Upload Windows package
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-package
+          path: dist/
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Briefcase
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install briefcase
+
+      - name: Build macOS App
+        run: |
+          briefcase create macOS app --no-input
+          briefcase build macOS app --no-input
+          briefcase package macOS app --adhoc-sign --update --no-input
+
+      - name: Upload macOS package
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-package
+          path: dist/
+
+  create-release:
+    needs: [build-all, build-windows, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            linux-packages/*
+            windows-package/*
+            macos-package/*
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
