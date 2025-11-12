@@ -49,6 +49,11 @@ jobs:
         run: |
           sudo rm -rf build dist linux || true
       - name: Create app
+        env:
+          # Try to force pip to use pre-built wheels
+          PIP_ONLY_BINARY: "pygobject"
+          # Set build environment variables
+          PKG_CONFIG_PATH: "/usr/lib64/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig"
         run: |
           briefcase create linux appimage --no-input --log -v
       - name: Build app
