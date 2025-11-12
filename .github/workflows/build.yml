@@ -57,6 +57,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip setuptools wheel
           python -m pip install briefcase
+      - name: Clean previous builds
+        run: |
+          sudo rm -rf build dist linux windows macos android ios web || true
       - name: Debug environment
         run: |
           echo "Python version: $(python --version)"
