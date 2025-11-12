@@ -50,9 +50,9 @@ jobs:
           pip install briefcase
       - name: Build Linux package
         run: |
-          briefcase create linux system
-          briefcase build linux system
-          briefcase package linux system
+          briefcase create linux system --no-input --log
+          briefcase build linux system --no-input --log
+          briefcase package linux system --no-input --log
       - name: Upload Linux artifact
         uses: actions/upload-artifact@v4
         with:
@@ -67,6 +67,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Install Docker
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker.io
+          sudo systemctl start docker
+          sudo usermod -aG docker $USER
       - name: Install system dependencies
         run: |
           sudo apt-get update
@@ -88,9 +94,9 @@ jobs:
           pip install briefcase
       - name: Build AppImage
         run: |
-          BRIEFCASE_NO_DOCKER=1 briefcase create linux appimage
-          BRIEFCASE_NO_DOCKER=1 briefcase build linux appimage
-          BRIEFCASE_NO_DOCKER=1 briefcase package linux appimage
+          briefcase create linux appimage --no-input --log
+          briefcase build linux appimage --no-input --log
+          briefcase package linux appimage --no-input --log
       - name: Upload AppImage artifact
         uses: actions/upload-artifact@v4
         with:
