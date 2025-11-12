@@ -146,12 +146,12 @@ system_runtime_requires = [
 ]
 
 [tool.briefcase.app.autopassgui.linux.appimage]
-manylinux = "manylinux_2_17"
+manylinux = "manylinux_2_28"
 
 requires = [
     "toga-gtk~=0.5.0",
-    # Use older PyGObject version that doesn't require newer gobject-introspection
-    "pygobject==3.42.2",
+    # Use specific older PyGObject that has pre-built wheels
+    "pygobject==3.44.1",
 ]
 
 system_requires = [
