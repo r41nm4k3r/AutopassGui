@@ -53,15 +53,37 @@ jobs:
       - name: Clean previous builds
         run: |
           sudo rm -rf build dist linux || true
+      - name: Install Docker and RPM tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            docker.io \
+            rpm \
+            rpm2cpio \
+            cpio \
+            alien
+          sudo systemctl start docker
+          sudo usermod -aG docker $USER
       - name: Create app
         run: |
-          briefcase create linux system rhel --no-input --log -v
+          # Note: Building RPM packages requires a RHEL/CentOS system
+          # This workflow attempts to use Docker with CentOS, but may have compatibility issues
+          # For production RPM builds, use a RHEL/CentOS runner
+          briefcase create linux system --target centos:8 --no-input --log -v
       - name: Build app
         run: |
-          briefcase build linux system rhel --no-input --log -v
+          briefcase build linux system --no-input --log -v
       - name: Package app
         run: |
-          briefcase package linux system rhel --adhoc-sign --update --no-input --log -v
+          briefcase package linux system --adhoc-sign --update --no-input --log -v
+      - name: Convert DEB to RPM (fallback)
+        if: failure()
+        run: |
+          # If RPM build fails, try converting the DEB package to RPM using alien
+          if [ -f dist/*.deb ]; then
+            sudo alien -r dist/*.deb
+            mv *.rpm dist/ || true
+          fi
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
