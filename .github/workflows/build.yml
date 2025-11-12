@@ -59,6 +59,9 @@ jobs:
             sudo systemctl start docker
             sudo usermod -aG docker $USER
           fi
+          # Make system python3 point to the same version we're using
+          PYTHON_PATH=$(which python)
+          sudo update-alternatives --install /usr/bin/python3 python3 $PYTHON_PATH 1
       - name: Install system dependencies (Windows)
         if: matrix.runs_on == 'windows-latest'
         run: |
@@ -125,15 +128,24 @@ jobs:
           name: ${{ matrix.target }}-${{ matrix.output_format }}
           path: dist
           if-no-files-found: warn
-      - name: Debug dist directory
-        if: always()
+      - name: Debug dist directory (Ubuntu)
+        if: always() && matrix.runs_on == 'ubuntu-latest'
         run: |
           echo "Contents of current directory:"
-          ls -la || dir
+          ls -la
           echo "Contents of dist directory (if exists):"
           ls -la dist || echo "dist directory does not exist"
           echo "Contents of build directory (if exists):"
           ls -la build || echo "build directory does not exist"
+      - name: Debug dist directory (Windows)
+        if: always() && matrix.runs_on == 'windows-latest'
+        run: |
+          echo "Contents of current directory:"
+          Get-ChildItem
+          echo "Contents of dist directory (if exists):"
+          if (Test-Path dist) { Get-ChildItem dist } else { echo "dist directory does not exist" }
+          echo "Contents of build directory (if exists):"
+          if (Test-Path build) { Get-ChildItem build } else { echo "build directory does not exist" }
       - name: Collect logs (Ubuntu)
         if: always() && matrix.runs_on == 'ubuntu-latest'
         run: |
