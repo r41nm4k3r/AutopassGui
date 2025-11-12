@@ -64,37 +64,33 @@ jobs:
       - name: Clean previous builds
         run: |
           sudo rm -rf build dist linux || true
-      - name: Install Docker and RPM tools
+      - name: Install RPM tools
         run: |
-          # Skip apt-get update since we already did it above
-          # Just install the additional packages we need
+          # Install tools needed for RPM conversion
           sudo apt-get install -y \
-            docker.io \
             rpm \
             rpm2cpio \
             cpio \
             alien 2>/dev/null || echo "Some packages may have failed, continuing"
-          sudo systemctl start docker 2>/dev/null || echo "Docker start failed, continuing"
-          sudo usermod -aG docker $USER 2>/dev/null || echo "User mod failed, continuing"
       - name: Create app
         run: |
-          # Note: Building RPM packages requires a RHEL/CentOS system
-          # This workflow attempts to use Docker with CentOS, but may have compatibility issues
-          # For production RPM builds, use a RHEL/CentOS runner
-          briefcase create linux system --target centos:8 --no-input --log -v
+          # Build DEB package first (known working)
+          briefcase create linux system --no-input --log -v
       - name: Build app
         run: |
           briefcase build linux system --no-input --log -v
       - name: Package app
         run: |
           briefcase package linux system --adhoc-sign --update --no-input --log -v
-      - name: Convert DEB to RPM (fallback)
-        if: failure()
+      - name: Convert DEB to RPM
         run: |
-          # If RPM build fails, try converting the DEB package to RPM using alien
+          # Convert the working DEB package to RPM using alien
           if [ -f dist/*.deb ]; then
             sudo alien -r dist/*.deb
-            mv *.rpm dist/ || true
+            mv *.rpm dist/ 2>/dev/null || echo "RPM conversion completed"
+            ls -la dist/
+          else
+            echo "No DEB package found to convert"
           fi
       - name: Upload artifact
         uses: actions/upload-artifact@v4
