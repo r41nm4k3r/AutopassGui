@@ -1,0 +1,50 @@
+name: Build Windows
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Briefcase
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install briefcase
+      - name: Clean previous builds
+        run: |
+          Remove-Item -Path build, dist, windows -Recurse -Force -ErrorAction SilentlyContinue
+      - name: Create app
+        run: |
+          briefcase create windows app --no-input --log -v
+      - name: Build app
+        run: |
+          briefcase build windows app --no-input --log -v
+      - name: Package app
+        run: |
+          briefcase package windows app --adhoc-sign --update --no-input --log -v
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-app
+          path: dist
+          if-no-files-found: warn
+      - name: Collect logs
+        if: always()
+        run: |
+          New-Item -ItemType Directory -Path logs -Force
+          Get-ChildItem -Path . -Filter "*.log" -Recurse | Copy-Item -Destination logs -ErrorAction SilentlyContinue
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-windows
+          path: logs
