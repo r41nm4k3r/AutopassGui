@@ -50,10 +50,23 @@ jobs:
             echo "Warning: Could not find python-config"
           fi
           
-          # Verify Python.h location
+          # Get Python include directory and create symlink
           PYTHON_INCLUDE=$(python -c "import sysconfig; print(sysconfig.get_path('include'))")
           echo "Python include path: $PYTHON_INCLUDE"
           ls -la "$PYTHON_INCLUDE/Python.h" || echo "Python.h not found at expected location"
+          
+          # Create symlink for Python headers where Briefcase expects them
+          sudo mkdir -p /usr/include/python3.11
+          sudo ln -sf "$PYTHON_INCLUDE"/* /usr/include/python3.11/
+          echo "Created symlinks in /usr/include/python3.11/"
+          ls -la /usr/include/python3.11/Python.h || echo "Python.h symlink failed"
+          
+          # Also create library symlinks if needed
+          PYTHON_LIB=$(python -c "import sysconfig; print(sysconfig.get_config_var('LIBDIR'))")
+          echo "Python library path: $PYTHON_LIB"
+          if [ -d "$PYTHON_LIB" ]; then
+            sudo ln -sf "$PYTHON_LIB"/libpython3.11* /usr/lib/ 2>/dev/null || true
+          fi
       - name: Install Briefcase
         run: |
           python -m pip install --upgrade pip setuptools wheel
