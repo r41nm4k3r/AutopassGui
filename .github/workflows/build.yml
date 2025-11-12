@@ -48,10 +48,14 @@ jobs:
             libcanberra-gtk3-module \
             fuse \
             libfuse2 \
-            git \
-            docker.io
-          sudo systemctl start docker
-          sudo usermod -aG docker $USER
+            git
+          # Install Docker for AppImage builds only
+          if [ "${{ matrix.output_format }}" = "appimage" ]; then
+            sudo apt-get remove -y containerd || true
+            sudo apt-get install -y docker.io
+            sudo systemctl start docker
+            sudo usermod -aG docker $USER
+          fi
           sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
       - name: Install Briefcase
         run: |
