@@ -48,24 +48,18 @@ jobs:
         run: |
           sudo rm -rf build dist linux || true
       - name: Create app
-        env:
-          # Try to force pip to use pre-built wheels
-          PIP_ONLY_BINARY: "pygobject"
-          # Set build environment variables
-          PKG_CONFIG_PATH: "/usr/lib64/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig"
-          # Build without Docker to use Ubuntu's modern gobject-introspection
-          BRIEFCASE_NO_DOCKER: "1"
         run: |
+          export BRIEFCASE_NO_DOCKER=1
+          export PIP_ONLY_BINARY=pygobject
+          export PKG_CONFIG_PATH="/usr/lib64/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig"
           briefcase create linux appimage --no-input --log -v
       - name: Build app
-        env:
-          BRIEFCASE_NO_DOCKER: "1"
         run: |
+          export BRIEFCASE_NO_DOCKER=1
           briefcase build linux appimage --no-input --log -v
       - name: Package app
-        env:
-          BRIEFCASE_NO_DOCKER: "1"
         run: |
+          export BRIEFCASE_NO_DOCKER=1
           briefcase package linux appimage --adhoc-sign --update --no-input --log -v
       - name: Upload artifact
         uses: actions/upload-artifact@v4
