@@ -17,6 +17,9 @@ jobs:
           python-version: '3.11'
       - name: Install system dependencies
         run: |
+          # Fix apt_pkg issue that occurs on some GitHub Actions runners
+          sudo apt-get install --reinstall python3-apt -y || true
+          
           sudo apt-get update
           sudo apt-get install -y \
             build-essential \
@@ -55,6 +58,9 @@ jobs:
           sudo rm -rf build dist linux || true
       - name: Install Docker and RPM tools
         run: |
+          # Fix apt_pkg issue that occurs on some GitHub Actions runners
+          sudo apt-get install --reinstall python3-apt -y || true
+          
           sudo apt-get update
           sudo apt-get install -y \
             docker.io \
