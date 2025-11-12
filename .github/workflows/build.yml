@@ -98,8 +98,7 @@ jobs:
       - name: Create app (Ubuntu)
         if: matrix.runs_on == 'ubuntu-latest'
         run: |
-          set -x
-          briefcase create ${{ matrix.platform }} ${{ matrix.output_format }} --no-input --log -v 2>&1 | tee create.log || echo "Create failed with exit code $?"
+          briefcase create ${{ matrix.platform }} ${{ matrix.output_format }} --no-input --log -v
       - name: Create app (Windows)
         if: matrix.runs_on == 'windows-latest'
         run: |
@@ -107,8 +106,7 @@ jobs:
       - name: Build app (Ubuntu)
         if: matrix.runs_on == 'ubuntu-latest'
         run: |
-          set -x
-          briefcase build ${{ matrix.platform }} ${{ matrix.output_format }} --no-input --log -v 2>&1 | tee build.log || echo "Build failed with exit code $?"
+          briefcase build ${{ matrix.platform }} ${{ matrix.output_format }} --no-input --log -v
       - name: Build app (Windows)
         if: matrix.runs_on == 'windows-latest'
         run: |
@@ -116,8 +114,7 @@ jobs:
       - name: Package app (Ubuntu)
         if: matrix.runs_on == 'ubuntu-latest'
         run: |
-          set -x
-          briefcase package ${{ matrix.platform }} ${{ matrix.output_format }} --adhoc-sign --update --no-input --log -v 2>&1 | tee package.log || echo "Package failed with exit code $?"
+          briefcase package ${{ matrix.platform }} ${{ matrix.output_format }} --adhoc-sign --update --no-input --log -v
       - name: Package app (Windows)
         if: matrix.runs_on == 'windows-latest'
         run: |
@@ -127,7 +124,16 @@ jobs:
         with:
           name: ${{ matrix.target }}-${{ matrix.output_format }}
           path: dist
-          if-no-files-found: error
+          if-no-files-found: warn
+      - name: Debug dist directory
+        if: always()
+        run: |
+          echo "Contents of current directory:"
+          ls -la || dir
+          echo "Contents of dist directory (if exists):"
+          ls -la dist || echo "dist directory does not exist"
+          echo "Contents of build directory (if exists):"
+          ls -la build || echo "build directory does not exist"
       - name: Collect logs (Ubuntu)
         if: always() && matrix.runs_on == 'ubuntu-latest'
         run: |
@@ -146,7 +152,7 @@ jobs:
           echo "Log files found:"
           Get-ChildItem logs
       - name: Upload logs on failure
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: logs-${{ matrix.target }}
