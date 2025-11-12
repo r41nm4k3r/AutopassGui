@@ -51,20 +51,33 @@ jobs:
             git
           # Install Docker for AppImage builds only
           if [ "${{ matrix.output_format }}" = "appimage" ]; then
-            sudo apt-get remove -y containerd || true
-            sudo apt-get install -y docker.io
+            # Remove conflicting packages and install Docker
+            sudo apt-get remove -y containerd containerd.io runc || true
+            sudo apt-get autoremove -y || true
+            curl -fsSL https://get.docker.com -o get-docker.sh
+            sudo sh get-docker.sh
             sudo systemctl start docker
             sudo usermod -aG docker $USER
           fi
-          sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
+      - name: Install system dependencies (Windows)
+        if: matrix.runs_on == 'windows-latest'
+        run: |
+          # Windows-specific setup if needed
+          echo "Windows runner ready"
       - name: Install Briefcase
         run: |
           python -m pip install --upgrade pip setuptools wheel
           python -m pip install briefcase
-      - name: Clean previous builds
+      - name: Clean previous builds (Ubuntu)
+        if: matrix.runs_on == 'ubuntu-latest'
         run: |
           sudo rm -rf build dist linux windows macos android ios web || true
-      - name: Debug environment
+      - name: Clean previous builds (Windows)
+        if: matrix.runs_on == 'windows-latest'
+        run: |
+          Remove-Item -Path build, dist, linux, windows, macos, android, ios, web -Recurse -Force -ErrorAction SilentlyContinue
+      - name: Debug environment (Ubuntu)
+        if: matrix.runs_on == 'ubuntu-latest'
         run: |
           echo "Python version: $(python --version)"
           echo "Python3 version: $(python3 --version)"
@@ -73,26 +86,50 @@ jobs:
           echo "Directory contents:"
           ls -la
           echo "pyproject.toml exists: $(test -f pyproject.toml && echo yes || echo no)"
-      - name: Create app
+      - name: Debug environment (Windows)
+        if: matrix.runs_on == 'windows-latest'
+        run: |
+          echo "Python version: $(python --version)"
+          echo "Briefcase version: $(briefcase --version)"
+          echo "Current directory: $(Get-Location)"
+          echo "Directory contents:"
+          Get-ChildItem
+          echo "pyproject.toml exists: $(Test-Path pyproject.toml)"
+      - name: Create app (Ubuntu)
+        if: matrix.runs_on == 'ubuntu-latest'
         run: |
           set -x
           briefcase create ${{ matrix.platform }} ${{ matrix.output_format }} --no-input --log -v 2>&1 | tee create.log || echo "Create failed with exit code $?"
-      - name: Build app
+      - name: Create app (Windows)
+        if: matrix.runs_on == 'windows-latest'
+        run: |
+          briefcase create ${{ matrix.platform }} ${{ matrix.output_format }} --no-input --log -v
+      - name: Build app (Ubuntu)
+        if: matrix.runs_on == 'ubuntu-latest'
         run: |
           set -x
           briefcase build ${{ matrix.platform }} ${{ matrix.output_format }} --no-input --log -v 2>&1 | tee build.log || echo "Build failed with exit code $?"
-      - name: Package app
+      - name: Build app (Windows)
+        if: matrix.runs_on == 'windows-latest'
+        run: |
+          briefcase build ${{ matrix.platform }} ${{ matrix.output_format }} --no-input --log -v
+      - name: Package app (Ubuntu)
+        if: matrix.runs_on == 'ubuntu-latest'
         run: |
           set -x
           briefcase package ${{ matrix.platform }} ${{ matrix.output_format }} --adhoc-sign --update --no-input --log -v 2>&1 | tee package.log || echo "Package failed with exit code $?"
+      - name: Package app (Windows)
+        if: matrix.runs_on == 'windows-latest'
+        run: |
+          briefcase package ${{ matrix.platform }} ${{ matrix.output_format }} --adhoc-sign --update --no-input --log -v
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.target }}-${{ matrix.output_format }}
           path: dist
           if-no-files-found: error
-      - name: Collect logs
-        if: always()
+      - name: Collect logs (Ubuntu)
+        if: always() && matrix.runs_on == 'ubuntu-latest'
         run: |
           mkdir -p logs
           find . -name "*.log" -exec cp {} logs/ \; || true
@@ -101,6 +138,13 @@ jobs:
           cp package.log logs/ 2>/dev/null || true
           echo "Log files found:"
           ls -la logs/
+      - name: Collect logs (Windows)
+        if: always() && matrix.runs_on == 'windows-latest'
+        run: |
+          New-Item -ItemType Directory -Path logs -Force
+          Get-ChildItem -Path . -Filter "*.log" -Recurse | Copy-Item -Destination logs -ErrorAction SilentlyContinue
+          echo "Log files found:"
+          Get-ChildItem logs
       - name: Upload logs on failure
         if: failure()
         uses: actions/upload-artifact@v4
