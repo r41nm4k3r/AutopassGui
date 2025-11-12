@@ -57,15 +57,27 @@ jobs:
         run: |
           python -m pip install --upgrade pip setuptools wheel
           python -m pip install briefcase
+      - name: Debug environment
+        run: |
+          echo "Python version: $(python --version)"
+          echo "Python3 version: $(python3 --version)"
+          echo "Briefcase version: $(briefcase --version)"
+          echo "Current directory: $(pwd)"
+          echo "Directory contents:"
+          ls -la
+          echo "pyproject.toml exists: $(test -f pyproject.toml && echo yes || echo no)"
       - name: Create app
         run: |
-          briefcase create ${{ matrix.platform }} ${{ matrix.output_format }} --no-input --log -v
+          set -x
+          briefcase create ${{ matrix.platform }} ${{ matrix.output_format }} --no-input --log -v 2>&1 | tee create.log || echo "Create failed with exit code $?"
       - name: Build app
         run: |
-          briefcase build ${{ matrix.platform }} ${{ matrix.output_format }} --no-input --log -v
+          set -x
+          briefcase build ${{ matrix.platform }} ${{ matrix.output_format }} --no-input --log -v 2>&1 | tee build.log || echo "Build failed with exit code $?"
       - name: Package app
         run: |
-          briefcase package ${{ matrix.platform }} ${{ matrix.output_format }} --adhoc-sign --update --no-input --log -v
+          set -x
+          briefcase package ${{ matrix.platform }} ${{ matrix.output_format }} --adhoc-sign --update --no-input --log -v 2>&1 | tee package.log || echo "Package failed with exit code $?"
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -77,6 +89,11 @@ jobs:
         run: |
           mkdir -p logs
           find . -name "*.log" -exec cp {} logs/ \; || true
+          cp create.log logs/ 2>/dev/null || true
+          cp build.log logs/ 2>/dev/null || true
+          cp package.log logs/ 2>/dev/null || true
+          echo "Log files found:"
+          ls -la logs/
       - name: Upload logs on failure
         if: failure()
         uses: actions/upload-artifact@v4
