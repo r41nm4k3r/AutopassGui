@@ -28,7 +28,9 @@ test_sources = [
 ]
 
 requires = [
-    "pyserial"
+    "pyserial",
+    # Force specific PyGObject version for AppImage compatibility
+    "pygobject==3.36.1; platform_system=='Linux'",
 ]
 
 test_requires = [
@@ -146,12 +148,12 @@ system_runtime_requires = [
 ]
 
 [tool.briefcase.app.autopassgui.linux.appimage]
-manylinux = "manylinux_2_28"
+manylinux = "manylinux_2_34"
 
 requires = [
     "toga-gtk~=0.5.0",
-    # Use very old PyGObject that definitely works with gobject-introspection 1.56.1
-    "pygobject>=3.36.0,<3.40.0",
+    # Use exact version that works with gobject-introspection 1.56.1
+    "pygobject==3.36.1",
 ]
 
 system_requires = [
