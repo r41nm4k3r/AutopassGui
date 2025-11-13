@@ -872,9 +872,21 @@ class ArduinoControlApp(toga.App):
         dialog_window = toga.Window(title=title)
         dialog_box = toga.Box(style=Pack(direction=COLUMN, margin=20))
 
+        # Centered lock icon for visual context
+        icon_row = toga.Box(style=Pack(direction=ROW, margin_bottom=10))
+        icon_row.add(toga.Box(style=Pack(flex=1)))
+        icon_row.add(
+            toga.Label(
+                '🔒',
+                style=Pack(font_size=36, text_align='center')
+            )
+        )
+        icon_row.add(toga.Box(style=Pack(flex=1)))
+        dialog_box.add(icon_row)
+
         label = toga.Label(
             message,
-            style=Pack(margin_bottom=10)
+            style=Pack(margin_bottom=10, text_align='center')
         )
         dialog_box.add(label)
 
@@ -882,9 +894,14 @@ class ArduinoControlApp(toga.App):
             placeholder='Enter PIN',
             style=Pack(margin_bottom=10, width=250)
         )
-        dialog_box.add(pin_input)
 
-        button_box = toga.Box(style=Pack(direction=ROW, margin_top=10))
+        pin_row = toga.Box(style=Pack(direction=ROW, margin_bottom=10))
+        pin_row.add(toga.Box(style=Pack(flex=1)))
+        pin_row.add(pin_input)
+        pin_row.add(toga.Box(style=Pack(flex=1)))
+        dialog_box.add(pin_row)
+
+        button_box = toga.Box(style=Pack(direction=ROW))
 
         loop = asyncio.get_event_loop()
         future = loop.create_future()
@@ -913,7 +930,11 @@ class ArduinoControlApp(toga.App):
         )
         button_box.add(cancel_button)
 
-        dialog_box.add(button_box)
+        button_row = toga.Box(style=Pack(direction=ROW, margin_top=10))
+        button_row.add(toga.Box(style=Pack(flex=1)))
+        button_row.add(button_box)
+        button_row.add(toga.Box(style=Pack(flex=1)))
+        dialog_box.add(button_row)
         dialog_window.content = dialog_box
         dialog_window.show()
 
