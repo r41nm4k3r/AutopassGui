@@ -1,6 +1,8 @@
 Autopass GUI
 ============
 
+<p align="center"><img src="src/autopassgui/resources/autopass-gui-128.png" alt="Autopass GUI Logo"></p>
+
 A cross-platform desktop application for controlling Arduino Pro Micro (Leonardo) based automatic password entry systems.
 
 Features
