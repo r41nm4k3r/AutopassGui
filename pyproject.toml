@@ -2,7 +2,7 @@
 [tool.briefcase]
 project_name = "Autopass GUI"
 bundle = "io.nnyx"
-version = "1.0.0"
+version = "0.1.0"
 url = "https://nnyx.io/autopassgui"
 license.file = "LICENSE"
 author = "NnyX"
