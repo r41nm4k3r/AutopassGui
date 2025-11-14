@@ -208,7 +208,8 @@ class ArduinoControlApp(toga.App):
         
         self.custom_entry = toga.TextInput(
             placeholder='Type custom command...',
-            style=Pack(margin=5, flex=1)
+            style=Pack(margin=5, flex=1),
+            on_change=self.update_activity
         )
         custom_box.add(self.custom_entry)
         
@@ -246,6 +247,10 @@ class ArduinoControlApp(toga.App):
         self.main_window = toga.MainWindow(title=self.formal_name)
         self.main_window.content = main_box
         self.main_content = main_box  # Store reference to main content
+        
+        # Add activity handlers to reset auto-lock timer on any user interaction
+        self.main_window.on_mouse_press = self.update_activity
+        self.main_window.on_key_press = self.update_activity
         
         # Create lockscreen overlay
         self.lockscreen_box = self.create_lockscreen()
@@ -568,6 +573,18 @@ class ArduinoControlApp(toga.App):
         self.unlock_status.text = ""
         self.last_activity = time.time()
         self.log_label.text = "Application unlocked"
+        self.start_auto_lock_timer()
+    
+    def pause_auto_lock_timer(self):
+        """Pause the auto-lock timer"""
+        if hasattr(self, 'auto_lock_timer') and self.auto_lock_timer:
+            self.auto_lock_timer.cancel()
+            self.auto_lock_timer = None
+    
+    def resume_auto_lock_timer(self):
+        """Resume the auto-lock timer"""
+        if not self.is_locked:
+            self.start_auto_lock_timer()
     
     def start_auto_lock_timer(self):
         """Start the auto-lock timer if configured"""
@@ -610,7 +627,7 @@ class ArduinoControlApp(toga.App):
             # Always schedule next check, regardless of whether we locked or not
             self.start_auto_lock_timer()
     
-    def update_activity(self):
+    def update_activity(self, widget=None):
         """Update last activity timestamp and restart auto-lock timer"""
         self.last_activity = time.time()
         if not self.is_locked:
@@ -773,20 +790,20 @@ class ArduinoControlApp(toga.App):
 
             if pin_input != pin_required:
                 # Show error message using a non-blocking dialog
+                self.pause_auto_lock_timer()
                 await self.main_window.dialog(
                     toga.ErrorDialog(
                         "Authentication Failed",
                         "Incorrect PIN. Settings reset cancelled."
                     )
                 )
+                self.resume_auto_lock_timer()
                 return
 
-        # Ask for confirmation using a non-blocking dialog
-        confirmed = await self.main_window.dialog(
-            toga.QuestionDialog(
-                "Reset Settings",
-                "Are you sure you want to reset all settings to default? This will reset all button names and disconnect the Arduino."
-            )
+        # Ask for confirmation using a custom dialog
+        confirmed = await self.show_confirmation_dialog(
+            "Reset Settings",
+            "Are you sure you want to reset all settings to default? This will reset all button names and disconnect the Arduino."
         )
 
         if not confirmed:
@@ -815,16 +832,21 @@ class ArduinoControlApp(toga.App):
         self.theme_btn.text = '🌙' if self.config.get("theme", "light") == "light" else '☀️'
 
         # Show success message using a non-blocking dialog
+        self.pause_auto_lock_timer()
         await self.main_window.dialog(
             toga.InfoDialog(
                 'Settings Reset',
                 'All settings have been reset to their default values.'
             )
         )
+        self.resume_auto_lock_timer()
     
     def show_error_message(self, title, message):
         """Show a simple error message dialog"""
+        self.pause_auto_lock_timer()
+        
         dialog_window = toga.Window(title=title)
+        self.app.windows.add(dialog_window)
         dialog_box = toga.Box(style=Pack(direction=COLUMN, margin=20))
         
         label = toga.Label(message, style=Pack(margin_bottom=20))
@@ -843,10 +865,15 @@ class ArduinoControlApp(toga.App):
         import time
         while dialog_window._impl.native.get_visible():
             time.sleep(0.1)
+        
+        self.resume_auto_lock_timer()
     
     def show_success_message(self, title, message):
         """Show a simple success message dialog"""
+        self.pause_auto_lock_timer()
+        
         dialog_window = toga.Window(title=title)
+        self.app.windows.add(dialog_window)
         dialog_box = toga.Box(style=Pack(direction=COLUMN, margin=20))
         
         label = toga.Label(message, style=Pack(margin_bottom=20))
@@ -865,11 +892,87 @@ class ArduinoControlApp(toga.App):
         import time
         while dialog_window._impl.native.get_visible():
             time.sleep(0.1)
+        
+        self.resume_auto_lock_timer()
+    
+    async def show_confirmation_dialog(self, title, message):
+        """Show a confirmation dialog and return True/False or None if cancelled"""
+        # Pause auto-lock timer while dialog is open
+        self.pause_auto_lock_timer()
+        
+        # Create a custom dialog window for confirmation
+        dialog_window = toga.Window(title=title)
+        self.app.windows.add(dialog_window)
+        dialog_box = toga.Box(style=Pack(direction=COLUMN, margin=20))
+
+        # Centered icon for visual context
+        icon_row = toga.Box(style=Pack(direction=ROW, margin_bottom=10))
+        icon_row.add(toga.Box(style=Pack(flex=1)))
+        icon_row.add(
+            toga.Label(
+                '⚠️',
+                style=Pack(font_size=36, text_align='center')
+            )
+        )
+        icon_row.add(toga.Box(style=Pack(flex=1)))
+        dialog_box.add(icon_row)
+
+        label = toga.Label(
+            message,
+            style=Pack(margin_bottom=10, text_align='center')
+        )
+        dialog_box.add(label)
+
+        button_box = toga.Box(style=Pack(direction=ROW))
+
+        loop = asyncio.get_event_loop()
+        future = loop.create_future()
+
+        def on_yes(widget):
+            dialog_window.hide()
+            if not future.done():
+                future.set_result(True)
+
+        def on_no(widget):
+            dialog_window.hide()
+            if not future.done():
+                future.set_result(False)
+
+        yes_button = toga.Button(
+            "Yes",
+            on_press=on_yes,
+            style=Pack(flex=1, margin_right=5)
+        )
+        button_box.add(yes_button)
+
+        no_button = toga.Button(
+            "No",
+            on_press=on_no,
+            style=Pack(flex=1)
+        )
+        button_box.add(no_button)
+
+        button_row = toga.Box(style=Pack(direction=ROW, margin_top=10))
+        button_row.add(toga.Box(style=Pack(flex=1)))
+        button_row.add(button_box)
+        button_row.add(toga.Box(style=Pack(flex=1)))
+        dialog_box.add(button_row)
+        dialog_window.content = dialog_box
+        dialog_window.show()
+
+        # Await the user's choice without blocking the UI thread
+        result = await future
+        self.resume_auto_lock_timer()
+        return result
     
     async def show_pin_input_dialog(self, title, message):
         """Show a PIN input dialog and return the entered PIN or None if cancelled"""
+        # Pause auto-lock timer while dialog is open
+        self.pause_auto_lock_timer()
+        
         # Create a custom dialog window for PIN input without blocking the main loop
         dialog_window = toga.Window(title=title)
+        self.app.windows.add(dialog_window)
         dialog_box = toga.Box(style=Pack(direction=COLUMN, margin=20))
 
         # Centered lock icon for visual context
@@ -892,7 +995,8 @@ class ArduinoControlApp(toga.App):
 
         pin_input = toga.PasswordInput(
             placeholder='Enter PIN',
-            style=Pack(margin_bottom=10, width=250)
+            style=Pack(margin_bottom=10, width=250),
+            on_change=self.update_activity
         )
 
         pin_row = toga.Box(style=Pack(direction=ROW, margin_bottom=10))
@@ -939,11 +1043,17 @@ class ArduinoControlApp(toga.App):
         dialog_window.show()
 
         # Await the user's choice without blocking the UI thread
-        return await future
+        result = await future
+        self.resume_auto_lock_timer()
+        return result
+    
     async def change_lock_pin(self, widget):
         """Change or set the lock PIN"""
+        self.pause_auto_lock_timer()
+        
         # Create a dialog for PIN change
         pin_dialog = toga.Window(title="Set Lock PIN")
+        self.app.windows.add(pin_dialog)
         dialog_box = toga.Box(style=Pack(direction=COLUMN, margin=20))
         
         current_pin = self.config.get("lock", {}).get("pin", "")
@@ -961,7 +1071,8 @@ class ArduinoControlApp(toga.App):
         
         current_pin_input = toga.PasswordInput(
             placeholder='Current PIN' if current_pin else 'New PIN',
-            style=Pack(margin_bottom=10, width=250)
+            style=Pack(margin_bottom=10, width=250),
+            on_change=self.update_activity
         )
         dialog_box.add(current_pin_input)
         
@@ -974,7 +1085,8 @@ class ArduinoControlApp(toga.App):
             
             new_pin_input = toga.PasswordInput(
                 placeholder='New PIN',
-                style=Pack(margin_bottom=10, width=250)
+                style=Pack(margin_bottom=10, width=250),
+                on_change=self.update_activity
             )
             dialog_box.add(new_pin_input)
             
@@ -986,7 +1098,8 @@ class ArduinoControlApp(toga.App):
             
             confirm_pin_input = toga.PasswordInput(
                 placeholder='Confirm New PIN',
-                style=Pack(margin_bottom=10, width=250)
+                style=Pack(margin_bottom=10, width=250),
+                on_change=self.update_activity
             )
             dialog_box.add(confirm_pin_input)
         
@@ -1001,7 +1114,8 @@ class ArduinoControlApp(toga.App):
         timeout_input = toga.TextInput(
             value=current_timeout,
             placeholder='0',
-            style=Pack(margin_bottom=10, width=250)
+            style=Pack(margin_bottom=10, width=250),
+            on_change=self.update_activity
         )
         dialog_box.add(timeout_input)
         
@@ -1141,9 +1255,11 @@ class ArduinoControlApp(toga.App):
         
         port = self.port_selection.value
         if not port or port == "No ports found":
+            self.pause_auto_lock_timer()
             await self.main_window.dialog(
                 toga.InfoDialog("No Port Selected", "Please select a valid serial port.")
             )
+            self.resume_auto_lock_timer()
             return
         
         try:
@@ -1155,9 +1271,11 @@ class ArduinoControlApp(toga.App):
             self.disconnect_btn.enabled = True
             self.log_label.text = f"Connected to {port}"
         except Exception as e:
+            self.pause_auto_lock_timer()
             await self.main_window.dialog(
                 toga.ErrorDialog("Connection Error", str(e))
             )
+            self.resume_auto_lock_timer()
     
     def disconnect_arduino(self, widget):
         """Disconnect from the Arduino"""
@@ -1179,9 +1297,11 @@ class ArduinoControlApp(toga.App):
             self.ser.write((cmd + "\n").encode())
             self.log_label.text = f"Sent: {cmd}"
         else:
+            self.pause_auto_lock_timer()
             await self.main_window.dialog(
                 toga.InfoDialog("Not Connected", "Connect to Arduino first!")
             )
+            self.resume_auto_lock_timer()
     
     async def send_custom_command(self, widget):
         """Send custom command from text input"""
@@ -1194,6 +1314,7 @@ class ArduinoControlApp(toga.App):
         """Rename a button and save to config"""
         # Create a custom dialog window for text input
         dialog_window = toga.Window(title="Rename Button")
+        self.app.windows.add(dialog_window)
         dialog_box = toga.Box(style=Pack(direction=COLUMN, margin=20))
         
         label = toga.Label(
@@ -1204,7 +1325,8 @@ class ArduinoControlApp(toga.App):
         
         text_input = toga.TextInput(
             value=self.button_labels[key],
-            style=Pack(margin_bottom=10, width=250)
+            style=Pack(margin_bottom=10, width=250),
+            on_change=self.update_activity
         )
         dialog_box.add(text_input)
         
