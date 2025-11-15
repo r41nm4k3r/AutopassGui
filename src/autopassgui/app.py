@@ -1,4 +1,5 @@
 import toga
+import toga.platform
 from toga.style import Pack
 from toga.style.pack import COLUMN, ROW
 import serial
@@ -22,6 +23,15 @@ class ArduinoControlApp(toga.App):
             'com.nnyx.arduinocontrol',
             icon='resources/autopass-gui.png'
         )
+        self._original_menubar = None
+        try:
+            if toga.platform.get_current_platform() == 'linux':
+                # Disable creation of the native GTK menubar on Linux
+                self._impl.create_menus = lambda *args, **kwargs: None
+                if hasattr(self._impl, "interface") and hasattr(self._impl.interface, "commands"):
+                    self._impl.interface.commands.on_change = None
+        except Exception as e:
+            print(f"Could not disable native menubar: {e}")
         self.ser = None
         self.config = self.load_config()
         self.button_labels = {
@@ -32,6 +42,52 @@ class ArduinoControlApp(toga.App):
         self.last_activity = time.time()
         self.auto_lock_timer = None
         self.start_auto_lock_timer()
+
+    async def open_settings_menu(self, widget):
+        """Open a small settings dialog with PIN and reset options"""
+        self.pause_auto_lock_timer()
+
+        dialog_window = toga.Window(title="Settings")
+        self.app.windows.add(dialog_window)
+
+        box = toga.Box(style=Pack(direction=COLUMN, margin=20))
+
+        label = toga.Label(
+            "Select a settings action:",
+            style=Pack(margin_bottom=10, text_align='center')
+        )
+        box.add(label)
+
+        button_box = toga.Box(style=Pack(direction=ROW, margin_top=10))
+
+        async def on_pin(widget):
+            dialog_window.hide()
+            await self.change_lock_pin(widget)
+
+        async def on_reset(widget):
+            dialog_window.hide()
+            await self.reset_settings(widget)
+
+        pin_btn = toga.Button(
+            "Set / Change PIN",
+            on_press=on_pin,
+            style=Pack(flex=1, margin_right=5)
+        )
+        button_box.add(pin_btn)
+
+        reset_btn = toga.Button(
+            "Reset Settings",
+            on_press=on_reset,
+            style=Pack(flex=1)
+        )
+        button_box.add(reset_btn)
+
+        box.add(button_box)
+
+        dialog_window.content = box
+        dialog_window.show()
+
+        self.resume_auto_lock_timer()
         
         # Store original commands for restoration
         self.original_commands = []
@@ -81,9 +137,18 @@ class ArduinoControlApp(toga.App):
         
         main_box = toga.Box(style=Pack(direction=COLUMN, margin=10))
         
-        # === Theme Toggle Button (Top Right) ===
+        # === Top Bar (Settings left, Lock/Theme right) ===
         theme_box = toga.Box(style=Pack(direction=ROW, margin=5))
-        spacer = toga.Box(style=Pack(flex=1))  # Push buttons to the right
+
+        # Settings (gear) button on the left
+        self.settings_btn = toga.Button(
+            '⚙',
+            on_press=self.open_settings_menu,
+            style=Pack(width=50, margin_right=5)
+        )
+        theme_box.add(self.settings_btn)
+
+        spacer = toga.Box(style=Pack(flex=1))  # Push lock/theme buttons to the right
         theme_box.add(spacer)
         
         # Lock toggle button
@@ -435,6 +500,16 @@ class ArduinoControlApp(toga.App):
             gi.require_version('Gtk', '3.0')
             from gi.repository import Gtk
             
+            # Method 0: If backend App exposes a menubar, remove it at the app level
+            try:
+                app_impl = getattr(self, "_impl", None)
+                if app_impl is not None and hasattr(app_impl, "set_menubar"):
+                    if self._original_menubar is None and hasattr(app_impl, "menu_bar"):
+                        self._original_menubar = app_impl.menu_bar
+                    app_impl.set_menubar(None)
+            except Exception:
+                pass
+            
             gtk_window = self.main_window._impl.native
             
             # Method 1: Try to hide the menubar widget using set_visible
@@ -461,7 +536,7 @@ class ArduinoControlApp(toga.App):
             try:
                 screen = Gtk.Window.get_default_screen()
                 css_provider = Gtk.CssProvider()
-                css_provider.load_from_data(b"menubar { visibility: hidden; }")
+                css_provider.load_from_data(b"menubar { display: none; }")
                 style_context = Gtk.StyleContext()
                 style_context.add_provider_for_screen(
                     screen, css_provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
@@ -478,6 +553,14 @@ class ArduinoControlApp(toga.App):
             import gi
             gi.require_version('Gtk', '3.0')
             from gi.repository import Gtk
+            
+            # Method 0: If we have a stored menubar, restore it at the app level
+            try:
+                app_impl = getattr(self, "_impl", None)
+                if app_impl is not None and hasattr(app_impl, "set_menubar") and self._original_menubar is not None:
+                    app_impl.set_menubar(self._original_menubar)
+            except Exception:
+                pass
             
             gtk_window = self.main_window._impl.native
             
@@ -505,7 +588,7 @@ class ArduinoControlApp(toga.App):
             try:
                 screen = Gtk.Window.get_default_screen()
                 css_provider = Gtk.CssProvider()
-                css_provider.load_from_data(b"menubar { visibility: visible; }")
+                css_provider.load_from_data(b"menubar { display: block; }")
                 style_context = Gtk.StyleContext()
                 style_context.add_provider_for_screen(
                     screen, css_provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
@@ -770,6 +853,10 @@ class ArduinoControlApp(toga.App):
 
         self.commands.add(reset_cmd)
         self.commands.add(lock_cmd)
+
+    
+    def _create_menus(*args, **kwargs):
+        return None
 
     
     async def reset_settings(self, widget):
