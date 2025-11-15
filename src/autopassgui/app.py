@@ -144,7 +144,7 @@ class ArduinoControlApp(toga.App):
         self.settings_btn = toga.Button(
             '⚙',
             on_press=self.open_settings_menu,
-            style=Pack(width=50, margin_right=5)
+            style=Pack(width=60, font_size=15, margin_right=5)
         )
         theme_box.add(self.settings_btn)
 
